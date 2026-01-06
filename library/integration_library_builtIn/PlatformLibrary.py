@@ -17,6 +17,7 @@ from typing import List
 
 import kubernetes
 import urllib3
+import ssl
 import yaml
 from deprecated import deprecated
 from kubernetes import client, config
@@ -30,11 +31,24 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 def get_kubernetes_api_client(config_file=None, context=None, persist_config=True):
     try:
         config.load_incluster_config()
-        return kubernetes.client.ApiClient()
+        return patchK8sClient(kubernetes.client.ApiClient())
     except config.ConfigException:
-        return kubernetes.config.new_client_from_config(config_file=config_file,
-                                                        context=context,
-                                                        persist_config=persist_config)
+        return patchK8sClient(kubernetes.config.new_client_from_config(
+            config_file=config_file,
+            context=context,
+            persist_config=persist_config))
+
+
+def patchK8sClient(api_client):
+    ctx = ssl.create_default_context()
+    ctx.verify_flags = ctx.verify_flags & ~ssl.VERIFY_X509_STRICT
+
+    api_client.rest_client.pool_manager = urllib3.PoolManager(
+        num_pools=4,
+        ssl_context=ctx,
+        **api_client.rest_client.pool_manager.connection_pool_kw,
+    )
+    return api_client
 
 
 class PlatformLibrary(object):
