@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import ssl
 import time
 from typing import List
 
 import kubernetes
 import urllib3
-import ssl
 import yaml
 from deprecated import deprecated
 from kubernetes import client, config
